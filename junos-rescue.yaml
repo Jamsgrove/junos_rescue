@@ -1,0 +1,41 @@
+---
+- name: Compare time with last system commit and if older than 15 days then update rescue config
+  hosts: all
+  roles:
+    - juniper.junos
+  connection: local
+  gather_facts: False
+
+  vars:
+    credentials:
+      host: "{{ ansible_host }}"
+#      user: "jhvjh"
+#      password: kjkj
+      timeout: 50
+      port: "22"
+
+  tasks:
+
+    - name: Collect ansible_date_time fact, only run once
+      setup:
+        filter: 
+      run_once: true
+
+    - name: Get output of "show system commit"
+      juniper_junos_rpc:
+        provider: "{{ credentials }}"
+        rpcs: "get-commit-information"
+        format: xml
+      register: syscommit
+
+
+    - name: Current commit and rescue state
+      debug:
+        msg: Last commit was "{{ ((ansible_date_time['date'] | to_datetime('%Y-%m-%d')) - ( syscommit['parsed_output']['commit-information']['commit-history'][0]['date-time'] | to_datetime('%Y-%m-%d %H:%M:%S %Z'))).days  }}" days ago and rescue was saved "{{ ((ansible_date_time['date'] | to_datetime('%Y-%m-%d')) - ( syscommit['parsed_output']['commit-information']['rescue-configuration']['date-time'] | to_datetime('%Y-%m-%d %H:%M:%S %Z'))).days  }}" days ago. 
+
+
+    - name: Save rescue config if last config commit is older than 15 days OR rescue was saved over 90 days ago
+      juniper_junos_command:
+        provider: "{{ credentials }}"
+        commands: "request system configuration rescue save"
+      when: ((ansible_date_time['date'] | to_datetime('%Y-%m-%d')) - ( syscommit['parsed_output']['commit-information']['commit-history'][0]['date-time'] | to_datetime('%Y-%m-%d %H:%M:%S %Z'))).days  >= 15 or ((ansible_date_time['date'] | to_datetime('%Y-%m-%d')) - ( syscommit['parsed_output']['commit-information']['rescue-configuration']['date-time'] | to_datetime('%Y-%m-%d %H:%M:%S %Z'))).days >= 90
