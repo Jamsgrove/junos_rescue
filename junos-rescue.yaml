@@ -2,7 +2,7 @@
 - name: Compare time with last system commit and if older than 15 days then update rescue config
   hosts: all
   roles:
-    - juniper.junos
+    - Juniper.junos
   connection: local
   gather_facts: False
 
