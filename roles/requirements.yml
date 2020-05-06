@@ -1,2 +1,2 @@
 ---
-- src: juniper.junos
+- name: juniper.junos
